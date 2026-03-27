@@ -1,9 +1,14 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule,ConfigService } from '@nestjs/config';
 import {TypeOrmModule} from "@nestjs/typeorm"
 import { UsersModule } from './users/users.module';
+import { Throttle, ThrottlerModule } from '@nestjs/throttler';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
+import { LoggerMiddleware } from './common/middleware/logger.middleware';
 
 @Module({
   imports: [
@@ -27,10 +32,18 @@ import { UsersModule } from './users/users.module';
     }),
     inject:[ConfigService]
     }),
-
+    ThrottlerModule.forRoot([{ttl:60000,limit :100}]),
     UsersModule
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {provide: APP_INTERCEPTOR, useClass: ResponseInterceptor},
+    {provide: APP_FILTER, useClass: GlobalExceptionFilter}
+  ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure( consumer: MiddlewareConsumer){
+    consumer.apply(LoggerMiddleware).forRoutes("*")
+  }
+}
