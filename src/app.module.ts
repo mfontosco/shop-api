@@ -9,6 +9,8 @@ import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
+import { CategoriesModule } from './categories/categories.module';
+import { ProductsModule } from './products/products.module';
 
 @Module({
   imports: [
@@ -33,7 +35,9 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
     inject:[ConfigService]
     }),
     ThrottlerModule.forRoot([{ttl:60000,limit :100}]),
-    UsersModule
+    UsersModule,
+    CategoriesModule,
+    ProductsModule
   ],
   controllers: [AppController],
   providers: [
