@@ -1,8 +1,9 @@
+import { Product } from "src/products/entities/product.entity";
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('categories')
 export class Categories{
-    @PrimaryGeneratedColumn()
+    @PrimaryGeneratedColumn("uuid")
     id: string
 
     @Column({unique: true, length: 100})
@@ -20,8 +21,8 @@ export class Categories{
     @CreateDateColumn()
     updatedAt: Date
 
-    // @OneToMany(()=>Product,(product)=>product.category)
-    // products: Product[]
+    @OneToMany(()=>Product,(product)=>product.category)
+    products: Product[]
 
 
 

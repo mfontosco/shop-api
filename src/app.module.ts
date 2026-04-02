@@ -11,6 +11,7 @@ import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { CategoriesModule } from './categories/categories.module';
 import { ProductsModule } from './products/products.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -37,7 +38,8 @@ import { ProductsModule } from './products/products.module';
     ThrottlerModule.forRoot([{ttl:60000,limit :100}]),
     UsersModule,
     CategoriesModule,
-    ProductsModule
+    ProductsModule,
+    AuthModule
   ],
   controllers: [AppController],
   providers: [
