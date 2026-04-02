@@ -11,7 +11,7 @@ export class CategoriesController {
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
-    async create(dto:CreateCategoryDto){
+    async create(@Body()dto:CreateCategoryDto){
         return this.categoryService.create(dto)
     }
 

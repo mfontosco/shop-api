@@ -13,6 +13,7 @@ export class CategoriesService {
     ){}
 
     async create(dto: CreateCategoryDto){
+        console.log("dto:", dto)
         const existing = await this.categoriesRepo.findOne({
             where:{ name: dto.name}
         })
