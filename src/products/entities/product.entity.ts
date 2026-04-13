@@ -42,7 +42,7 @@ export class Product{
     createdBy: User
 
     @CreateDateColumn()
-    createdAt: Date
+    createdAt: Date 
     
     @CreateDateColumn()
     upatedAt: Date

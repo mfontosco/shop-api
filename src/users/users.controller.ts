@@ -3,6 +3,8 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { Roles } from 'src/auth/decorators/roles.decorators.';
+import { UserRole } from './entities/user.entity';
 
 @Controller('users')
 export class UsersController {
@@ -14,6 +16,7 @@ export class UsersController {
     create(@Body() dto:CreateUserDto){
         return this.userService.create(dto)
     }
+    @Roles(UserRole.Admin)
     @Get()
     findAll(@Query() pagination:PaginationDto){
         return this.userService.findAll(pagination)
@@ -29,6 +32,7 @@ export class UsersController {
     ){
         return this.userService.update(id,dto)
     }
+     @Roles(UserRole.Admin)
     @Delete(':id')
     @HttpCode(HttpStatus.NO_CONTENT)
     remove(@Param("id", ParseUUIDPipe)id: string){
