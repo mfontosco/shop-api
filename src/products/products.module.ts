@@ -10,6 +10,7 @@ import { CategoriesModule } from 'src/categories/categories.module';
   CategoriesModule,
 ],
   controllers: [ProductsController],
-  providers: [ProductsService]
+  providers: [ProductsService],
+  exports: [ProductsService]
 })
 export class ProductsModule {}

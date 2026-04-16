@@ -14,6 +14,7 @@ import { ProductsModule } from './products/products.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.gaurd';
 import { RolesGuard } from './auth/guards/roles.guard';
+import { OrdersModule } from './orders/orders.module';
 
 @Module({
   imports: [
@@ -42,7 +43,8 @@ import { RolesGuard } from './auth/guards/roles.guard';
     UsersModule,
     CategoriesModule,
     ProductsModule,
-    AuthModule
+    AuthModule,
+    OrdersModule
   ],
   controllers: [AppController],
   providers: [
