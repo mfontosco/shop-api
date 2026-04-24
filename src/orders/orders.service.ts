@@ -10,6 +10,10 @@ import { Paginated } from 'src/common/interfaces/paginated.interface';
 import { FilterOrderDto } from './dto/filter-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { Product } from 'src/products/entities/product.entity';
+import { InjectQueue } from '@nestjs/bullmq';
+import { ORDER_CONFIRMATION_JOB, ORDER_QUEUE, ORDER_STATUS_UPDATE_JOB } from './queues/order.queue';
+import { Queue } from 'bullmq';
+import { NotificationsGateway } from 'src/notifications/notifications.gateway';
 
 @Injectable()
 export class OrdersService {
@@ -22,11 +26,15 @@ constructor(
 
     private readonly datasource: DataSource,
 
+    private readonly notificationsGateway: NotificationsGateway,
 
     private readonly productService:ProductsService,
 
     @InjectRepository(Product)
-    private readonly productRepo: Repository<Product>
+    private readonly productRepo: Repository<Product>,
+
+    @InjectQueue(ORDER_QUEUE)
+    private readonly orderQueue: Queue
 
 ){}
 async create(dto: CreateOrderDto, user: User): Promise<Order|null>{
@@ -84,7 +92,14 @@ async create(dto: CreateOrderDto, user: User): Promise<Order|null>{
             )
          )
          await queryRunner.commitTransaction();
-
+await this.orderQueue.add(ORDER_CONFIRMATION_JOB,
+    {orderId: savedOrder.id,userEmail:user.email},
+    {
+        attempts: 3,
+        backoff: {type: 'exponential',delay:2000},
+        removeOnComplete: true
+    }
+)
          return this.findOne(savedOrder.id,user)
            
     } catch (error) {
@@ -171,7 +186,15 @@ async updateStatus(
         await this.restoreStock(order)
     }
     order.status = dto.sstatus
-    return this.ordersRepo.save(order)
+    await this.orderQueue.add(
+  ORDER_STATUS_UPDATE_JOB,
+  { orderId: order.id, userEmail: order.user.email, oldStatus: order.status },
+  { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
+);
+    const savedOrder = await this.ordersRepo.save(order)
+
+    this.notificationsGateway.notifyOrderUpdate(order.user.id, savedOrder)
+    return savedOrder
 }
 async cancelOrder(id: string, user: User): Promise<Order|null>{
     const order = await this.findOne(id, user);

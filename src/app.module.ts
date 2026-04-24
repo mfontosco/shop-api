@@ -15,7 +15,15 @@ import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.gaurd';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { OrdersModule } from './orders/orders.module';
-
+import  {CacheModule} from '@nestjs/cache-manager'
+import { CacheableMemory, createKeyv } from "cacheable"
+import KeyvRedis from '@keyv/redis'
+import { BullModule } from '@nestjs/bullmq';
+import { ScheduleModule } from '@nestjs/schedule';
+import { EmailModule } from './email/email.module';
+import { NotificationsGateway } from './notifications/notifications.gateway';
+import { NotificationsModule } from './notifications/notifications.module';
+import { TasksModule } from './tasks/tasks.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -40,11 +48,34 @@ import { OrdersModule } from './orders/orders.module';
     inject:[ConfigService]
     }),
     ThrottlerModule.forRoot([{ttl:60000,limit :100}]),
+    CacheModule.registerAsync({
+      isGlobal: true,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService)=>({
+        stores: [
+          createKeyv(new CacheableMemory({ttl: 30000, lruSize: 5000})),
+          new KeyvRedis(`redis://${config.get('REDIS_HOST')}:${config.get('REDIS_PORT')}`),
+        ]
+      })
+    }),
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config:ConfigService)=>({
+        connection:{
+          host: config.get<string>('REDIS_HOST'),
+          port: config.get<number>('REDIS_PORT')
+        }
+      })
+    }),
+    ScheduleModule.forRoot(),
     UsersModule,
     CategoriesModule,
     ProductsModule,
     AuthModule,
-    OrdersModule
+    OrdersModule,
+    EmailModule,
+    NotificationsModule,
+    TasksModule
   ],
   controllers: [AppController],
   providers: [
@@ -53,6 +84,7 @@ import { OrdersModule } from './orders/orders.module';
     {provide: APP_FILTER, useClass: GlobalExceptionFilter},
     { provide: APP_GUARD, useClass: JwtAuthGuard  },
 { provide: APP_GUARD, useClass: RolesGuard   },
+NotificationsGateway,
   ],
 })
 export class AppModule implements NestModule {

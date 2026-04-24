@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -9,15 +9,28 @@ import { User } from 'src/users/entities/user.entity';
 import { FilterProductDto } from './dto/filter-product.dto';
 import { Paginated } from 'src/common/interfaces/paginated.interface';
 import { UpdateProductDto } from './dto/update-product.dto';
-
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 @Injectable()
 export class ProductsService {
     constructor(
         @InjectRepository(Product)
         private readonly createProductRepo:Repository<Product>,
-        private readonly  categoryService: CategoriesService
+        private readonly  categoryService: CategoriesService,
+
+        @Inject(CACHE_MANAGER)
+        private readonly cacheManager: Cache,
     ){} 
 
+
+     private buildCacheKey(filters: FilterProductDto):string{
+        const {page, limit, search, categoryId, status, minPrice, maxPrice} = filters
+
+        return `products: ${page}:${limit}:${search ?? ''}:${categoryId ?? ''}:${status ?? ''}:${minPrice ?? ''}:${maxPrice ?? ''}`
+    }
+   async invalidateProductsCache(): Promise<void>{
+        await this.cacheManager.del('products:*');
+    }
     async create(dto: CreateProductDto, creator: User):Promise<Product>{
         const category = await this.categoryService.findOne(dto.categoryId)
 
@@ -33,10 +46,19 @@ export class ProductsService {
             category,
             createdBy:creator
         })
-        return this.createProductRepo.save(product)
+        const savedProduct = this.createProductRepo.save(product)
+        await this.invalidateProductsCache()
+        return savedProduct
     }
 
+   
     async  findAll(filter:FilterProductDto):Promise<Paginated<Product>>{
+        const cacheKey = this.buildCacheKey(filter)
+
+        const cached = await this.cacheManager.get<Paginated<Product>>(cacheKey)
+        if(cached){
+            return cached
+        }
         const {page,limit,skip,search,categoryId,status,minPrice,maxPrice} = filter
         const qb = this.createProductRepo.createQueryBuilder('product').leftJoinAndSelect('product.category','category')
 
@@ -55,7 +77,7 @@ export class ProductsService {
        .take(limit)
        .getManyAndCount()
 
-       return {
+       const result:Paginated<Product> = {
         data,
         meta:{
             total,
@@ -66,8 +88,11 @@ export class ProductsService {
             hasPrevPage: page > 1
         }
        }
+       await this.cacheManager.set(cacheKey,result,60000)
+       return result
     }
 
+ 
     async findOne(id:string):Promise<Product>{
         const product = await this.createProductRepo.findOne({where:{
             id
@@ -87,7 +112,9 @@ export class ProductsService {
         }
         const {categoryId: _ , ...rest} = dto
         Object.assign(product,rest)
-        return this.createProductRepo.save(product)
+        const updatedProduct = this.createProductRepo.save(product)
+          await this.invalidateProductsCache()
+          return updatedProduct
     }
 
     async remove(id:string):Promise<void>{
@@ -96,6 +123,7 @@ export class ProductsService {
             throw new NotFoundException("Product with this id doesn't exist")
         }
         await this.createProductRepo.remove(product)
+          await this.invalidateProductsCache()
     }
 
 
