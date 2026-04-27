@@ -7,14 +7,18 @@ import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { User, UserRole } from 'src/users/entities/user.entity';
 import { Roles } from 'src/auth/decorators/roles.decorators.';
 import { Public } from 'src/auth/decorators/public.decorator';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 
 // const TEMP_user = {id:"123455",name:"Admin"} as any
+@ApiTags('products')
 @Controller('products')
 export class ProductsController {
     constructor(
         private readonly productService:ProductsService
     ){}
+    @ApiOperation({summary: 'Create a new product'})
+    @ApiBearerAuth('access-token')
     @Post()
     @HttpCode(HttpStatus.CREATED)
     create(@Body() dto:CreateProductDto,
@@ -22,6 +26,13 @@ export class ProductsController {
 ){
         return this.productService.create(dto,user)
     }
+    @ApiOperation({summary: 'List productss with pagination and filters'})
+    @ApiQuery({name:"page", required: false, type: Number})
+    @ApiQuery({name:"limit", required: false, type: Number})
+    @ApiQuery({name:"search", required: false, type: String})
+    @ApiQuery({name:"categoryId", required: false, type: String})
+    @ApiQuery({name:"minPrice", required: false, type: Number})
+    @ApiQuery({name:"maxPrice", required: false, type: Number})
     @Public()
     @Get()
     findAll(@Query() filters:FilterProductDto){
